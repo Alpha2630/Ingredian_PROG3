@@ -3,15 +3,15 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class DBConnection {
-
     public Connection getConnection() {
         try {
-            String jdbcURl = System.getenv("JDBC_URl"); //
-            String user = System.getenv("USER"); //mini_dish_db_manager
-            String password = System.getenv("PASSWORD"); //123456
-            return DriverManager.getConnection("jdbc:postgresql://localhost:5432/mini_dish_db", "postgres", "postgres");
+            String url = System.getenv("JDBC_URL");
+            String user = System.getenv("DB_USER");
+            String password = System.getenv("DB_PASSWORD");
+
+            return DriverManager.getConnection(url, user, password);
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Database connection failed", e);
         }
     }
 

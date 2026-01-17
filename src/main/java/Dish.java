@@ -17,15 +17,19 @@ public class Dish {
     }
 
     public Double getDishCost() {
-        double totalPrice = 0;
-        for (int i = 0; i < ingredients.size(); i++) {
-            Double quantity = ingredients.get(i).getQuantity();
-            if(quantity == null) {
-                throw new RuntimeException("...");
-            }
-            totalPrice = totalPrice + ingredients.get(i).getPrice() * quantity;
+        if (ingredients == null || ingredients.isEmpty()) {
+            return 0.0;
         }
-        return totalPrice;
+
+        double total = 0;
+        for (Ingredient i : ingredients) {
+            if (i.getQuantity() == null) {
+                throw new IllegalStateException(
+                        "Quantity missing for ingredient " + i.getName());
+            }
+            total += i.getPrice() * i.getQuantity();
+        }
+        return total;
     }
 
     public Dish() {
@@ -37,7 +41,6 @@ public class Dish {
         this.dishType = dishType;
         this.ingredients = ingredients;
     }
-
 
     public Integer getId() {
         return id;
@@ -80,9 +83,11 @@ public class Dish {
 
     @Override
     public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) return false;
+        if (o == null || getClass() != o.getClass())
+            return false;
         Dish dish = (Dish) o;
-        return Objects.equals(id, dish.id) && Objects.equals(name, dish.name) && dishType == dish.dishType && Objects.equals(ingredients, dish.ingredients);
+        return Objects.equals(id, dish.id) && Objects.equals(name, dish.name) && dishType == dish.dishType
+                && Objects.equals(ingredients, dish.ingredients);
     }
 
     @Override
