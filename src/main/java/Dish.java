@@ -21,15 +21,19 @@ public class Dish {
             return 0.0;
         }
 
-        double total = 0;
-        for (Ingredient i : ingredients) {
-            if (i.getQuantity() == null) {
+        double totalCost = 0;
+
+        for (Ingredient ingredient : ingredients) {
+            if (ingredient.getRequiredQuantity() == null) {
                 throw new IllegalStateException(
-                        "Quantity missing for ingredient " + i.getName());
+                        "Impossible de calculer le coût : quantité inconnue pour l’ingrédient "
+                                + ingredient.getName());
             }
-            total += i.getPrice() * i.getQuantity();
+
+            totalCost += ingredient.getPrice() * ingredient.getRequiredQuantity();
         }
-        return total;
+
+        return totalCost;
     }
 
     public Dish() {

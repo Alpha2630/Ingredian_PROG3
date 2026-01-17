@@ -6,14 +6,14 @@ public class Ingredient {
     private CategoryEnum category;
     private Double price;
     private Dish dish;
-    private Double quantity;
+    private Double requiredQuantity;
 
-    public Double getQuantity() {
-        return quantity;
+    public Double getRequiredQuantity() {
+        return requiredQuantity;
     }
 
-    public void setQuantity(Double quantity) {
-        this.quantity = quantity;
+    public void setRequiredQuantity(Double requiredQuantity) {
+        this.requiredQuantity = requiredQuantity;
     }
 
     public Ingredient() {
@@ -73,21 +73,23 @@ public class Ingredient {
     public void setDish(Dish dish) {
         this.dish = dish;
     }
+@Override
+public boolean equals(Object o) {
+    if (this == o) return true;
+    if (!(o instanceof Ingredient)) return false;
+    Ingredient that = (Ingredient) o;
+    return Objects.equals(id, that.id);
+}
 
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) return false;
-        Ingredient that = (Ingredient) o;
-        return Objects.equals(id, that.id) && Objects.equals(name, that.name) && category == that.category && Objects.equals(price, that.price) && Objects.equals(dish, that.dish);
-    }
+@Override
+public int hashCode() {
+    return Objects.hash(id);
+}
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(id, name, category, price, dish);
-    }
 
     @Override
     public String toString() {
+        String quantity = null;
         return "Ingredient{" +
                 "id=" + id +
                 ", name='" + name + '\'' +

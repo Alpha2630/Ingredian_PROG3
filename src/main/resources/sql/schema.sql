@@ -5,7 +5,8 @@ create table dish
 (
     id        serial primary key,
     name      varchar(255),
-    dish_type dish_type
+    dish_type dish_type,
+    price     numeric(10,2)
 );
 
 create type ingredient_category as enum ('VEGETABLE', 'ANIMAL', 'MARINE', 'DAIRY', 'OTHER');

@@ -100,8 +100,8 @@ public class DataRetriever {
                     ps.setString(2, ingredient.getName());
                     ps.setString(3, ingredient.getCategory().name());
                     ps.setDouble(4, ingredient.getPrice());
-                    if (ingredient.getQuantity() != null) {
-                        ps.setDouble(5, ingredient.getQuantity());
+                    if (ingredient.getRequiredQuantity() != null) {
+                        ps.setDouble(5, ingredient.getRequiredQuantity());
                     }else {
                         ps.setNull(5, Types.DOUBLE);
                     }
@@ -177,7 +177,7 @@ public class DataRetriever {
             for (Ingredient ingredient : ingredients) {
                 ps.setInt(1, dishId);
                 ps.setInt(2, ingredient.getId());
-                ps.addBatch(); // Can be substitute ps.executeUpdate() but bad performance
+                ps.addBatch(); 
             }
             ps.executeBatch();
         }
@@ -202,7 +202,7 @@ public class DataRetriever {
                 ingredient.setPrice(resultSet.getDouble("price"));
                 ingredient.setCategory(CategoryEnum.valueOf(resultSet.getString("category")));
                 Object requiredQuantity = resultSet.getObject("required_quantity");
-                ingredient.setQuantity(requiredQuantity == null ? null : resultSet.getDouble("required_quantity"));
+                ingredient.setRequiredQuantity(requiredQuantity == null ? null : resultSet.getDouble("required_quantity"));
                 ingredients.add(ingredient);
             }
             dbConnection.closeConnection(connection);

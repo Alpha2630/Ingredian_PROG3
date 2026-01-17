@@ -23,3 +23,10 @@ update dish
 set price = 6000.0
 where id = 2;
 
+
+update ingredient set required_quantity = 1 where name = 'Laitue';
+update ingredient set required_quantity = 2 where name = 'Tomate';
+update ingredient set required_quantity = 0.5 where name = 'Poulet';
+update ingredient set required_quantity = null where name = 'Chocolat';
+update ingredient set required_quantity = null where name = 'Beurre';
+
