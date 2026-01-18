@@ -30,3 +30,19 @@ update ingredient set required_quantity = 0.5 where name = 'Poulet';
 update ingredient set required_quantity = null where name = 'Chocolat';
 update ingredient set required_quantity = null where name = 'Beurre';
 
+INSERT INTO dish (name, dish_type, price) VALUES
+('Salade fraîche', 'STARTER', 2000),
+('Poulet grillé', 'MAIN', 6000);
+
+INSERT INTO ingredient (name, category, price) VALUES
+('Laitue', 'VEGETABLE', 800),
+('Tomate', 'VEGETABLE', 600),
+('Poulet', 'ANIMAL', 4500),
+('Huile', 'OTHER', 3000);
+
+INSERT INTO dish_ingredient VALUES
+(1, 1, 1, 'PIECE'),
+(1, 2, 0.25, 'KG'),
+(2, 3, 0.5, 'KG'),
+(2, 4, 0.15, 'L');
+

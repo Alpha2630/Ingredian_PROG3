@@ -19,6 +19,15 @@ create table ingredient
     category ingredient_category,
     id_dish  int references dish (id)
 );
+CREATE TYPE unit_type AS ENUM ('PIECE', 'KG', 'L');
+CREATE TABLE dish_ingredient (
+    dish_id INT REFERENCES dish(id) ON DELETE CASCADE,
+    ingredient_id INT REFERENCES ingredient(id) ON DELETE CASCADE,
+    required_quantity NUMERIC(10,2),
+    unit unit_type,
+    PRIMARY KEY (dish_id, ingredient_id)
+);
+
 
 alter table dish
     add column if not exists price numeric(10, 2);
@@ -26,3 +35,4 @@ alter table dish
 
 alter table ingredient
     add column if not exists required_quantity numeric(10, 2);
+
