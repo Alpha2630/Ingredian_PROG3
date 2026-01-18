@@ -6,7 +6,7 @@ public class Dish {
     private Double price;
     private String name;
     private DishTypeEnum dishType;
-    private List<Ingredient> ingredients;
+    private List<DishIngredient> ingredients;
 
     public Double getPrice() {
         return price;
@@ -23,7 +23,7 @@ public class Dish {
 
         double totalCost = 0;
 
-        for (Ingredient ingredient : ingredients) {
+        for (DishIngredient ingredient : ingredients) {
             if (ingredient.getRequiredQuantity() == null) {
                 throw new IllegalStateException(
                         "Impossible de calculer le coût : quantité inconnue pour l’ingrédient "
@@ -74,15 +74,15 @@ public class Dish {
         return ingredients;
     }
 
-    public void setIngredients(List<Ingredient> ingredients) {
-        if (ingredients == null) {
+    public void setIngredients(List<DishIngredient> dishIngredients) {
+        if (dishIngredients == null) {
             this.ingredients = null;
             return;
         }
-        for (int i = 0; i < ingredients.size(); i++) {
-            ingredients.get(i).setDish(this);
+        for (int i = 0; i < dishIngredients.size(); i++) {
+            dishIngredients.get(i).setDish(this);
         }
-        this.ingredients = ingredients;
+        this.ingredients = dishIngredients;
     }
 
     @Override
