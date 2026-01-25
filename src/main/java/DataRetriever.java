@@ -5,17 +5,14 @@ import java.util.List;
 
 public class DataRetriever {
     
-    // 1. Méthode pour sauvegarder un ingrédient avec ses mouvements de stock
     public Ingredient saveIngredient(Ingredient toSave) {
         Connection conn = null;
         try {
             conn = new DBConnection().getConnection();
             conn.setAutoCommit(false);
             
-            // Sauvegarder l'ingrédient
             Integer ingredientId = saveOrUpdateIngredient(conn, toSave);
             
-            // Sauvegarder les mouvements de stock
             if (toSave.getStockMovementList() != null && !toSave.getStockMovementList().isEmpty()) {
                 saveStockMovements(conn, ingredientId, toSave.getStockMovementList());
             }
@@ -32,7 +29,7 @@ public class DataRetriever {
             throw new RuntimeException("Error saving ingredient", e);
         } finally {
             if (conn != null) {
-                try { conn.close(); } catch (SQLException e) { /* ignore */ }
+                try { conn.close(); } catch (SQLException e) 
             }
         }
     }
@@ -93,7 +90,6 @@ public class DataRetriever {
         }
     }
     
-    // 2. Méthode pour trouver un ingrédient par ID avec ses mouvements
     public Ingredient findIngredientById(Integer id) {
         String sql = """
             SELECT i.id, i.name, i.category, i.price,
@@ -122,7 +118,6 @@ public class DataRetriever {
                     ingredient.setPrice(rs.getDouble("price"));
                 }
                 
-                // Ajouter le mouvement de stock s'il existe
                 if (rs.getObject("movement_id") != null) {
                     StockMovement movement = new StockMovement();
                     movement.setId(rs.getInt("movement_id"));
@@ -155,7 +150,6 @@ public class DataRetriever {
         }
     }
     
-    // 3. Méthode pour trouver un plat par ID
     public Dish findDishById(Integer id) {
         String sql = """
             SELECT d.id, d.name, d.dish_type, d.price,
@@ -187,17 +181,14 @@ public class DataRetriever {
                 }
                 
                 if (rs.getObject("ingredient_id") != null) {
-                    // Créer l'ingrédient
                     Ingredient ingredient = new Ingredient();
                     ingredient.setId(rs.getInt("ingredient_id"));
                     ingredient.setName(rs.getString("ingredient_name"));
                     ingredient.setCategory(CategoryEnum.valueOf(rs.getString("category")));
                     ingredient.setPrice(rs.getDouble("ingredient_price"));
                     
-                    // Récupérer les mouvements de stock pour cet ingrédient
                     ingredient = findIngredientById(ingredient.getId());
                     
-                    // Créer DishIngredient
                     DishIngredient di = new DishIngredient();
                     di.setIngredient(ingredient);
                     di.setRequiredQuantity(rs.getObject("required_quantity") == null ? 
@@ -224,17 +215,14 @@ public class DataRetriever {
         }
     }
     
-    // 4. Méthode pour sauvegarder un plat
     public Dish saveDish(Dish toSave) {
         Connection conn = null;
         try {
             conn = new DBConnection().getConnection();
             conn.setAutoCommit(false);
             
-            // Sauvegarder le plat
             Integer dishId = saveOrUpdateDish(conn, toSave);
             
-            // Mettre à jour les ingrédients du plat
             updateDishIngredients(conn, dishId, toSave.getIngredients());
             
             conn.commit();
@@ -249,7 +237,7 @@ public class DataRetriever {
             throw new RuntimeException("Error saving dish", e);
         } finally {
             if (conn != null) {
-                try { conn.close(); } catch (SQLException e) { /* ignore */ }
+                try { conn.close(); } catch (SQLException e) 
             }
         }
     }
@@ -287,14 +275,12 @@ public class DataRetriever {
     
     private void updateDishIngredients(Connection conn, Integer dishId, 
                                        List<DishIngredient> ingredients) throws SQLException {
-        // Supprimer les anciennes associations
         String deleteSql = "DELETE FROM dish_ingredient WHERE dish_id = ?";
         try (PreparedStatement ps = conn.prepareStatement(deleteSql)) {
             ps.setInt(1, dishId);
             ps.executeUpdate();
         }
         
-        // Ajouter les nouvelles associations
         if (ingredients != null && !ingredients.isEmpty()) {
             String insertSql = """
                 INSERT INTO dish_ingredient (dish_id, ingredient_id, required_quantity, unit)
@@ -316,7 +302,6 @@ public class DataRetriever {
         }
     }
     
-    // 5. Méthode pour créer un mouvement de stock
     public StockMovement createStockMovement(Integer ingredientId, Double quantity, 
                                             UnitEnum unit, LocalDateTime date) {
         String sql = """
@@ -351,7 +336,6 @@ public class DataRetriever {
         }
     }
     
-    // 6. Méthode pour calculer le stock total d'un ingrédient
     public Double getCurrentStock(Integer ingredientId) {
         String sql = """
             SELECT COALESCE(SUM(quantity), 0) AS total_stock
@@ -375,7 +359,6 @@ public class DataRetriever {
         }
     }
     
-    // 7. Méthode pour mettre à jour le stock après une vente
     public void updateStockAfterSale(Integer dishId, Integer quantitySold) {
         try {
             Dish dish = findDishById(dishId);
@@ -387,7 +370,6 @@ public class DataRetriever {
             for (DishIngredient di : dish.getIngredients()) {
                 if (di.getRequiredQuantity() != null && di.getIngredient() != null) {
                     Double quantityNeeded = di.getRequiredQuantity() * quantitySold;
-                    // Créer un mouvement négatif pour la vente
                     createStockMovement(
                         di.getIngredient().getId(),
                         -quantityNeeded,

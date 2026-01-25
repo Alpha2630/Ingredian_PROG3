@@ -18,7 +18,6 @@ public class Dish {
         this.price = price;
     }
 
-    // Calcul du coût du plat
     public Double getDishCost() {
         if (ingredients == null || ingredients.isEmpty()) {
             return 0.0;
@@ -37,7 +36,6 @@ public class Dish {
         return totalCost;
     }
 
-    // Calcul de la marge brute
     public Double getGrossMargin() {
         if (price == null) {
             throw new RuntimeException("Price is null for dish: " + name);
@@ -45,7 +43,6 @@ public class Dish {
         return price - getDishCost();
     }
 
-    // Vérifie si le plat peut être préparé (stock suffisant)
     public boolean canBePrepared() {
         if (ingredients == null || ingredients.isEmpty()) {
             return false;
@@ -65,7 +62,6 @@ public class Dish {
         return true;
     }
 
-    // Getters et Setters
     public Integer getId() { return id; }
     public void setId(Integer id) { this.id = id; }
     
