@@ -1,4 +1,4 @@
-create type dish_type as enum ('STARTER', 'MAIN', 'DESSERT');
+create type dish_type as enum ('STARTER', 'MAIN', 'DESSERT', 'BEVERAGE');
 
 
 create table dish
@@ -9,7 +9,7 @@ create table dish
     price     numeric(10,2)
 );
 
-create type ingredient_category as enum ('VEGETABLE', 'ANIMAL', 'MARINE', 'DAIRY', 'OTHER');
+create type ingredient_category as enum ('VEGETABLE', 'FRUIT', 'MEAT', 'FISH', 'DAIRY', 'SPICE', 'GRAIN', 'OTHER');
 
 create table ingredient
 (
@@ -19,7 +19,7 @@ create table ingredient
     category ingredient_category,
     id_dish  int references dish (id)
 );
-CREATE TYPE unit_type AS ENUM ('PIECE', 'KG', 'L');
+CREATE TYPE unit_type AS ENUM ('KG', 'G', 'L', 'ML', 'PIECE', 'CUP', 'TABLESPOON', 'TEASPOON');
 CREATE TABLE dish_ingredient (
     dish_id INT REFERENCES dish(id) ON DELETE CASCADE,
     ingredient_id INT REFERENCES ingredient(id) ON DELETE CASCADE,
