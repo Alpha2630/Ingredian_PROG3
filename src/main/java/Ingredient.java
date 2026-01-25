@@ -1,3 +1,5 @@
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 public class Ingredient {
@@ -5,23 +7,9 @@ public class Ingredient {
     private String name;
     private CategoryEnum category;
     private Double price;
-    private Dish dish;
-    private Double requiredQuantity;
+    private List<StockMovement> stockMovementList = new ArrayList<>();
 
-    public Double getRequiredQuantity() {
-        return requiredQuantity;
-    }
-
-    public void setRequiredQuantity(Double requiredQuantity) {
-        this.requiredQuantity = requiredQuantity;
-    }
-
-    public Ingredient() {
-    }
-
-    public Ingredient(Integer id) {
-        this.id = id;
-    }
+    public Ingredient() {}
 
     public Ingredient(Integer id, String name, CategoryEnum category, Double price) {
         this.id = id;
@@ -30,73 +18,61 @@ public class Ingredient {
         this.price = price;
     }
 
-    public String getDishName() {
-        return dish == null ? null : dish.getName();
+    public Double getCurrentStock() {
+        if (stockMovementList == null || stockMovementList.isEmpty()) {
+            return 0.0;
+        }
+        return stockMovementList.stream()
+                .mapToDouble(StockMovement::getQuantity)
+                .sum();
     }
 
-    public Integer getId() {
-        return id;
+    public Integer getId() { return id; }
+    public void setId(Integer id) { this.id = id; }
+    
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    
+    public CategoryEnum getCategory() { return category; }
+    public void setCategory(CategoryEnum category) { this.category = category; }
+    
+    public Double getPrice() { return price; }
+    public void setPrice(Double price) { this.price = price; }
+    
+    public List<StockMovement> getStockMovementList() { return stockMovementList; }
+    public void setStockMovementList(List<StockMovement> stockMovementList) { 
+        this.stockMovementList = stockMovementList; 
     }
 
-    public void setId(Integer id) {
-        this.id = id;
+    public void addStockMovement(StockMovement movement) {
+        if (stockMovementList == null) {
+            stockMovementList = new ArrayList<>();
+        }
+        movement.setIngredient(this);
+        stockMovementList.add(movement);
     }
 
-    public String getName() {
-        return name;
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Ingredient that = (Ingredient) o;
+        return Objects.equals(id, that.id);
     }
 
-    public void setName(String name) {
-        this.name = name;
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
     }
-
-    public CategoryEnum getCategory() {
-        return category;
-    }
-
-    public void setCategory(CategoryEnum category) {
-        this.category = category;
-    }
-
-    public Double getPrice() {
-        return price;
-    }
-
-    public void setPrice(Double price) {
-        this.price = price;
-    }
-
-    public Dish getDish() {
-        return dish;
-    }
-
-    public void setDish(Dish dish) {
-        this.dish = dish;
-    }
-@Override
-public boolean equals(Object o) {
-    if (this == o) return true;
-    if (!(o instanceof Ingredient)) return false;
-    Ingredient that = (Ingredient) o;
-    return Objects.equals(id, that.id);
-}
-
-@Override
-public int hashCode() {
-    return Objects.hash(id);
-}
-
 
     @Override
     public String toString() {
-        String quantity = null;
         return "Ingredient{" +
                 "id=" + id +
                 ", name='" + name + '\'' +
                 ", category=" + category +
                 ", price=" + price +
-                ", dishName=" + getDishName() +
-                ", quantity=" + quantity +
+                ", currentStock=" + getCurrentStock() +
                 '}';
     }
 }

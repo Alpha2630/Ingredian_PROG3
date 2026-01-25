@@ -1,3 +1,3 @@
 public enum DishTypeEnum {
-    STARTER, MAIN, DESSERT
+    STARTER, MAIN_COURSE, DESSERT, BEVERAGE
 }

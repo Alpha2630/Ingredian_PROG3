@@ -1,4 +1,4 @@
 
-public class UnitEnum {
-    PIECE, KG, L;
+public enum UnitEnum {
+    KG, G, L, ML, PIECE, CUP, TABLESPOON, TEASPOON
 }
