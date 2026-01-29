@@ -16,11 +16,11 @@ values (1, 'Laitue', 'VEGETABLE', 800.0),
 
 
 update dish
-set price = 2000.0
+set selling_price = 2000.0
 where id = 1;
 
 update dish
-set price = 6000.0
+set selling_price = 6000.0
 where id = 2;
 
 
