@@ -749,4 +749,31 @@ public class DataRetriever {
             throw new RuntimeException("Erreur calcul stock: " + e.getMessage(), e);
         }
     }
+    public Double getDishCost(Integer dishId) {
+        DBConnection dbConnection = new DBConnection();
+
+        try (Connection connection = dbConnection.getConnection()) {
+            String sql = """
+            SELECT 
+                SUM(di.required_quantity * i.price) as total_cost
+            FROM dish_ingredient di
+            JOIN ingredient i ON i.id = di.id_ingredient
+            WHERE di.id_dish = ?
+            GROUP BY di.id_dish
+            """;
+
+            PreparedStatement stmt = connection.prepareStatement(sql);
+            stmt.setInt(1, dishId);
+
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                return rs.getDouble("total_cost");
+            }
+            return 0.0;
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur calcul coût plat: " + e.getMessage(), e);
+        }
+    }
 }
