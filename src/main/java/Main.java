@@ -1,79 +1,51 @@
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
-
 public class Main {
     public static void main(String[] args) {
-        System.out.println("=== Test de saveOrder() ===");
+        DataRetriever dr = new DataRetriever();
 
         try {
-            DataRetriever dataRetriever = new DataRetriever();
+            // 1. Créer une commande avec type et statut
+            Order order = new Order()
+                    .setReference("TEST-STATUS-001")
+                    .setCreationDatetime(Instant.now())
+                    .setOrderType(OrderTypeEnum.TAKE_AWAY)
+                    .setOrderStatus(OrderStatusEnum.CREATED);
 
-            System.out.println("\n1. Vérification des plats en base...");
-            Dish testDish = dataRetriever.findDishById(1);
-
-            if (testDish == null) {
-                System.out.println("❌ Aucun plat avec ID=1 trouvé en base");
-                System.out.println("   Veuillez d'abord insérer des plats dans la table dish");
-                return;
-            }
-
-            System.out.println("   Plat trouvé: " + testDish.getName());
-
-
-            System.out.println("\n2. Vérification des stocks...");
-            System.out.println("   (Assurez-vous d'avoir des ingrédients en stock)");
-
-            System.out.println("\n3. Création de la commande...");
-            Order order = new Order();
-            order.setReference("TEST-" + System.currentTimeMillis()); // Référence unique
-            order.setCreationDatetime(Instant.now());
-
-
+            // Ajouter un plat
+            Dish dish = dr.findDishById(1);
             DishOrder dishOrder = new DishOrder();
-            dishOrder.setDish(testDish);
-            dishOrder.setQuantity(1);
+                    dishOrder.setDish(dish);
+                    dishOrder.setQuantity(1);
+            order.setDishOrderList(Arrays.asList(dishOrder));
 
-            order.setDishOrderList(List.of(new DishOrder[]{dishOrder}));
+            // 2. Sauvegarder
+            Order saved = dr.saveOrder(order);
+            System.out.println("✅ Commande créée: " + saved.getId());
+            System.out.println("   Type: " + saved.getOrderType());
+            System.out.println("   Statut: " + saved.getOrderStatus());
 
-            System.out.println("   Référence: " + order.getReference());
-            System.out.println("   Plat: " + testDish.getName());
-            System.out.println("   Quantité: " + dishOrder.getQuantity());
+            // 3. Mettre à jour le statut
+            saved.setOrderStatus(OrderStatusEnum.READY);
+            Order updated = dr.saveOrder(saved);
+            System.out.println("\n✅ Statut mis à jour: " + updated.getOrderStatus());
 
+            // 4. Marquer comme livré
+            updated.setOrderStatus(OrderStatusEnum.DELIVERED);
+            Order delivered = dr.saveOrder(updated);
+            System.out.println("\n✅ Commande livrée: " + delivered.getOrderStatus());
 
-            System.out.println("\n4. Sauvegarde de la commande...");
-            Order savedOrder = dataRetriever.saveOrder(order);
-
-            System.out.println("\n✅ COMMANDE SAUVEGARDÉE AVEC SUCCÈS !");
-            System.out.println("   ID généré: " + savedOrder.getId());
-            System.out.println("   Référence: " + savedOrder.getReference());
-            System.out.println("   Date: " + savedOrder.getCreationDatetime());
-            System.out.println("   Nombre de plats: " + savedOrder.getDishOrderList().length);
-
-            System.out.println("\n5. Vérification par recherche...");
-            Order retrievedOrder = dataRetriever.findOrderByReference(savedOrder.getReference());
-            System.out.println("   Commande retrouvée: " + (retrievedOrder != null ? "✅" : "❌"));
-
-            if (retrievedOrder != null) {
-                System.out.println("   ID: " + retrievedOrder.getId());
-                System.out.println("   Nombre de DishOrder: " + retrievedOrder.getDishOrderList().length);
+            // 5. Essayer de modifier une commande livrée (DOIT ÉCHOUER)
+            try {
+                delivered.setOrderStatus(OrderStatusEnum.READY);
+                dr.saveOrder(delivered);
+                System.out.println("\n❌ DEVRAIT ÉCHOUER !");
+            } catch (RuntimeException e) {
+                System.out.println("\n✅ Exception correcte: " + e.getMessage());
             }
 
-        } catch (RuntimeException e) {
-            System.out.println("\n❌ ERREUR lors de saveOrder():");
-            System.out.println("   Message: " + e.getMessage());
-
-            if (e.getCause() != null) {
-                System.out.println("   Cause: " + e.getCause().getMessage());
-            }
-
-            if (e.getMessage() != null && e.getMessage().contains("Stock insuffisant")) {
-                System.out.println("\n💡 SOLUTION: Ajoutez des ingrédients en stock:");
-                System.out.println("   INSERT INTO stock_movement (id_ingredient, quantity, type, unit)");
-                System.out.println("   VALUES (1, 10.0, 'IN', 'KG'); -- Par exemple");
-            }
         } catch (Exception e) {
-            System.out.println("\n❌ Exception inattendue:");
             e.printStackTrace();
         }
     }

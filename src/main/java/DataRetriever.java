@@ -3,6 +3,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.time.Instant;
 
 public class DataRetriever {
 
@@ -127,6 +128,14 @@ public class DataRetriever {
         }
     }
     public Order saveOrder(Order orderToSave) {
+        // Vérifier si la commande existe déjà (pour mise à jour)
+        if (orderToSave.getId() != null) {
+            Order existingOrder = findOrderById(orderToSave.getId());
+            if (existingOrder.isDelivered()) {
+                throw new RuntimeException("Impossible de modifier une commande déjà livrée (ID: " + orderToSave.getId() + ")");
+            }
+        }
+
         DBConnection dbConnection = new DBConnection();
         Connection connection = null;
 
@@ -134,77 +143,77 @@ public class DataRetriever {
             connection = dbConnection.getConnection();
             connection.setAutoCommit(false);
 
-            // 1. Vérifier les stocks
-            checkStockAvailability(orderToSave, connection);
+            // Vérifier les stocks (uniquement pour nouvelles commandes ou statut CREATED)
+            if (orderToSave.getId() == null ||
+                    orderToSave.getOrderStatus() == null ||
+                    orderToSave.getOrderStatus() == OrderStatusEnum.CREATED) {
+                checkStockAvailability(orderToSave, connection);
+            }
 
-            // 2. Insérer la commande
-            String insertOrderSQL = """
-            INSERT INTO "order" (reference, creation_datetime, order_type, order_status) 
-            VALUES (?, ?, ?::order_type_enum, ?::order_status_enum) 
-            RETURNING id
-            """;
-            if(orderToSave.getId() != null){
-                Order existingOrder = findOrderById(orderToSave.getId());
-                if(existingOrder.isDelivered()){
-                    throw new RuntimeException("Impossible");
+            // Déterminer si c'est un insert ou update
+            if (orderToSave.getId() == null) {
+                // INSERT
+                String insertOrderSQL = """
+                INSERT INTO "order" (reference, creation_datetime, order_type, order_status) 
+                VALUES (?, ?, ?::order_type_enum, ?::order_status_enum) 
+                RETURNING id
+                """;
+
+                PreparedStatement orderStmt = connection.prepareStatement(insertOrderSQL);
+                orderStmt.setString(1, orderToSave.getReference());
+                orderStmt.setTimestamp(2, Timestamp.from(orderToSave.getCreationDatetime()));
+                orderStmt.setString(3, orderToSave.getOrderType().name());
+                orderStmt.setString(4,
+                        orderToSave.getOrderStatus() != null ?
+                                orderToSave.getOrderStatus().name() :
+                                OrderStatusEnum.CREATED.name());
+
+                ResultSet rs = orderStmt.executeQuery();
+                if (!rs.next()) {
+                    throw new RuntimeException("Échec de l'insertion de la commande");
                 }
 
+                int orderId = rs.getInt("id");
+                orderToSave.setId(orderId);
+
+                // Insérer les DishOrder
+                insertDishOrders(connection, orderId, orderToSave.getDishOrderList());
+
+                // Mettre à jour les stocks
+                updateStockAfterOrder(orderToSave, connection);
+
+            } else {
+                // UPDATE
+                String updateOrderSQL = """
+                UPDATE "order" 
+                SET order_type = ?::order_type_enum, 
+                    order_status = ?::order_status_enum,
+                    reference = ?
+                WHERE id = ?
+                """;
+
+                PreparedStatement orderStmt = connection.prepareStatement(updateOrderSQL);
+                orderStmt.setString(1, orderToSave.getOrderType().name());
+                orderStmt.setString(2, orderToSave.getOrderStatus().name());
+                orderStmt.setString(3, orderToSave.getReference());
+                orderStmt.setInt(4, orderToSave.getId());
+
+                int rowsUpdated = orderStmt.executeUpdate();
+                if (rowsUpdated == 0) {
+                    throw new RuntimeException("Échec de la mise à jour de la commande");
+                }
             }
-            PreparedStatement orderStmt = connection.prepareStatement(insertOrderSQL);
-            orderStmt.setString(1, orderToSave.getReference());
-            orderStmt.setTimestamp(2, Timestamp.from(orderToSave.getCreationDatetime()));
-            orderStmt.setString(3, orderToSave.getOrderType().name());
-            orderStmt.setString(4, orderToSave.getOrderStatus().name());
-
-            ResultSet rs = orderStmt.executeQuery();
-            if (!rs.next()) {
-                throw new RuntimeException("Échec de l'insertion de la commande");
-            }
-
-            Order savedOrder = new Order();
-            savedOrder.setId(rs.getInt("id"));
-            savedOrder.setReference(rs.getString("reference"));
-            savedOrder.setCreationDatetime(rs.getTimestamp("creation_datetime").toInstant());
-
-            // 3. Insérer les DishOrder
-            String insertDishOrderSQL = """
-            INSERT INTO dish_order (id_order, id_dish, quantity) 
-            VALUES (?, ?, ?)
-            """;
-
-            PreparedStatement dishOrderStmt = connection.prepareStatement(insertDishOrderSQL);
-
-            for (DishOrder dishOrder : orderToSave.getDishOrderList()) {
-                dishOrderStmt.setInt(1, savedOrder.getId());
-                dishOrderStmt.setInt(2, dishOrder.getDish().getId());
-                dishOrderStmt.setInt(3, dishOrder.getQuantity());
-                dishOrderStmt.addBatch();
-            }
-
-            dishOrderStmt.executeBatch();
-
-            // CORRECTION: Conversion du tableau en List
-            List<DishOrder> dishOrderList = new ArrayList<>();
-            for (DishOrder dishOrder : orderToSave.getDishOrderList()) {
-                dishOrderList.add(dishOrder);
-            }
-            savedOrder.setDishOrderList(dishOrderList);
-
-            // 4. Mettre à jour les stocks (CORRECTION APPLIQUÉE)
-            updateStockAfterOrder(savedOrder, connection);
 
             connection.commit();
 
-            // Retourner la commande complète avec ID
-            return findOrderByReference(savedOrder.getReference());
+            // Retourner la commande mise à jour
+            return findOrderById(orderToSave.getId());
 
         } catch (SQLException e) {
             try {
-                if (connection != null) {
-                    connection.rollback();
-                }
+                if (connection != null) connection.rollback();
             } catch (SQLException ex) {
-                throw new RuntimeException("Erreur lors du rollback: " + ex.getMessage(), ex);
+                // Ignorer
             }
             throw new RuntimeException("Erreur lors de la sauvegarde: " + e.getMessage(), e);
         } finally {
@@ -214,11 +223,59 @@ public class DataRetriever {
                     connection.close();
                 }
             } catch (SQLException e) {
-                throw new RuntimeException("Erreur lors de la fermeture: " + e.getMessage(), e);
+                // Ignorer
             }
         }
     }
 
+    private void insertDishOrders(Connection connection, int orderId, DishOrder[] dishOrders) throws SQLException {
+        if (dishOrders == null || dishOrders.length == 0) {
+            return;
+        }
+
+        String sql = "INSERT INTO dish_order (id_order, id_dish, quantity) VALUES (?, ?, ?)";
+        PreparedStatement stmt = connection.prepareStatement(sql);
+
+        for (DishOrder dishOrder : dishOrders) {
+            stmt.setInt(1, orderId);
+            stmt.setInt(2, dishOrder.getDish().getId());
+            stmt.setInt(3, dishOrder.getQuantity());
+            stmt.addBatch();
+        }
+
+        stmt.executeBatch();
+    }
+    public Order updateOrderStatus(Integer orderId, OrderStatusEnum newStatus) {
+        // Récupérer la commande
+        Order order = findOrderById(orderId);
+
+        // Vérifier si déjà livrée
+        if (order.isDelivered()) {
+            throw new RuntimeException("Impossible de modifier une commande déjà livrée");
+        }
+
+        // Mettre à jour le statut
+        order.setOrderStatus(newStatus);
+
+        // Sauvegarder (la méthode saveOrder vérifiera aussi isDelivered())
+        return saveOrder(order);
+    }
+
+    public Order updateOrderType(Integer orderId, OrderTypeEnum newType) {
+        // Récupérer la commande
+        Order order = findOrderById(orderId);
+
+        // Vérifier si déjà livrée
+        if (order.isDelivered()) {
+            throw new RuntimeException("Impossible de modifier une commande déjà livrée");
+        }
+
+        // Mettre à jour le type
+        order.setOrderType(newType);
+
+        // Sauvegarder
+        return saveOrder(order);
+    }
     private Order findOrderById(int orderId) {
         DBConnection dbConnection = new DBConnection();
         try (Connection connection = dbConnection.getConnection()) {
@@ -640,6 +697,56 @@ public class DataRetriever {
 
         try (PreparedStatement ps = conn.prepareStatement(setValSql)) {
             ps.executeQuery();
+        }
+    }
+    public StockValue getStockValueAt(Instant t, Integer ingredientIdentifier) {
+        DBConnection dbConnection = new DBConnection();
+
+        try (Connection connection = dbConnection.getConnection()) {
+            String sql = """
+            SELECT 
+                unit,
+                SUM(CASE 
+                    WHEN type = 'IN' THEN quantity
+                    WHEN type = 'OUT' THEN -quantity
+                    ELSE 0
+                END) as actual_quantity
+            FROM stock_movement
+            WHERE id_ingredient = ?
+                AND creation_datetime <= ?
+            GROUP BY id_ingredient, unit
+            """;
+
+            PreparedStatement stmt = connection.prepareStatement(sql);
+            stmt.setInt(1, ingredientIdentifier);
+            stmt.setTimestamp(2, Timestamp.from(t));
+
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                StockValue stockValue = new StockValue();
+                stockValue.setQuantity(rs.getDouble("actual_quantity"));
+                stockValue.setUnit(Unit.valueOf(rs.getString("unit")));
+                return stockValue;
+            }
+
+
+            StockValue stockValue = new StockValue();
+            stockValue.setQuantity(0.0);
+
+            String unitSQL = "SELECT unit FROM dish_ingredient WHERE id_ingredient = ? LIMIT 1";
+            PreparedStatement unitStmt = connection.prepareStatement(unitSQL);
+            unitStmt.setInt(1, ingredientIdentifier);
+            ResultSet unitRs = unitStmt.executeQuery();
+            if (unitRs.next()) {
+                stockValue.setUnit(Unit.valueOf(unitRs.getString("unit")));
+            } else {
+                stockValue.setUnit(Unit.KG); // Unité par défaut
+            }
+            return stockValue;
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur calcul stock: " + e.getMessage(), e);
         }
     }
 }
