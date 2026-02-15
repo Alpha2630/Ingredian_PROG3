@@ -1,5 +1,6 @@
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -774,6 +775,125 @@ public class DataRetriever {
 
         } catch (SQLException e) {
             throw new RuntimeException("Erreur calcul coût plat: " + e.getMessage(), e);
+        }
+    }
+    public Double getGrossMargin(Integer dishId) {
+        DBConnection dbConnection = new DBConnection();
+
+        try (Connection connection = dbConnection.getConnection()) {
+            String sql = """
+            SELECT 
+                d.selling_price - COALESCE(SUM(di.required_quantity * i.price), 0) as gross_margin
+            FROM dish d
+            LEFT JOIN dish_ingredient di ON di.id_dish = d.id
+            LEFT JOIN ingredient i ON i.id = di.id_ingredient
+            WHERE d.id = ?
+            GROUP BY d.id, d.selling_price
+            """;
+
+            PreparedStatement stmt = connection.prepareStatement(sql);
+            stmt.setInt(1, dishId);
+
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                return rs.getDouble("gross_margin");
+            }
+            return 0.0;
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur calcul marge brute: " + e.getMessage(), e);
+        }
+    }
+    public Map<Integer, Map<String, Double>> getStockStatistics(String periodicity, Instant startDate, Instant endDate) {
+        DBConnection dbConnection = new DBConnection();
+        Map<Integer, Map<String, Double>> statistics = new LinkedHashMap<>();
+
+        try (Connection connection = dbConnection.getConnection()) {
+            String sql;
+
+            // Adapter la requête selon la périodicité
+            switch (periodicity.toUpperCase()) {
+                case "DAY":
+                    sql = """
+                    SELECT 
+                        i.id as ingredient_id,
+                        i.name as ingredient_name,
+                        TO_CHAR(sm.creation_datetime, 'YYYY-MM-DD') as period,
+                        SUM(CASE 
+                            WHEN sm.type = 'IN' THEN sm.quantity
+                            WHEN sm.type = 'OUT' THEN -sm.quantity
+                            ELSE 0
+                        END) as stock_variation
+                    FROM stock_movement sm
+                    JOIN ingredient i ON i.id = sm.id_ingredient
+                    WHERE sm.creation_datetime BETWEEN ? AND ?
+                    GROUP BY i.id, i.name, TO_CHAR(sm.creation_datetime, 'YYYY-MM-DD')
+                    ORDER BY i.id, period
+                    """;
+                    break;
+
+                case "WEEK":
+                    sql = """
+                    SELECT 
+                        i.id as ingredient_id,
+                        i.name as ingredient_name,
+                        TO_CHAR(sm.creation_datetime, 'IYYY-IW') as period,
+                        SUM(CASE 
+                            WHEN sm.type = 'IN' THEN sm.quantity
+                            WHEN sm.type = 'OUT' THEN -sm.quantity
+                            ELSE 0
+                        END) as stock_variation
+                    FROM stock_movement sm
+                    JOIN ingredient i ON i.id = sm.id_ingredient
+                    WHERE sm.creation_datetime BETWEEN ? AND ?
+                    GROUP BY i.id, i.name, TO_CHAR(sm.creation_datetime, 'IYYY-IW')
+                    ORDER BY i.id, period
+                    """;
+                    break;
+
+                case "MONTH":
+                    sql = """
+                    SELECT 
+                        i.id as ingredient_id,
+                        i.name as ingredient_name,
+                        TO_CHAR(sm.creation_datetime, 'YYYY-MM') as period,
+                        SUM(CASE 
+                            WHEN sm.type = 'IN' THEN sm.quantity
+                            WHEN sm.type = 'OUT' THEN -sm.quantity
+                            ELSE 0
+                        END) as stock_variation
+                    FROM stock_movement sm
+                    JOIN ingredient i ON i.id = sm.id_ingredient
+                    WHERE sm.creation_datetime BETWEEN ? AND ?
+                    GROUP BY i.id, i.name, TO_CHAR(sm.creation_datetime, 'YYYY-MM')
+                    ORDER BY i.id, period
+                    """;
+                    break;
+
+                default:
+                    throw new IllegalArgumentException("Périodicité invalide: " + periodicity);
+            }
+
+            PreparedStatement stmt = connection.prepareStatement(sql);
+            stmt.setTimestamp(1, Timestamp.from(startDate));
+            stmt.setTimestamp(2, Timestamp.from(endDate));
+
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                int ingredientId = rs.getInt("ingredient_id");
+                String period = rs.getString("period");
+                double variation = rs.getDouble("stock_variation");
+
+                statistics.putIfAbsent(ingredientId, new LinkedHashMap<>());
+                statistics.get(ingredientId).put(period, variation);
+            }
+
+            return statistics;
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur calcul statistiques stock: " + e.getMessage(), e);
         }
     }
 }
