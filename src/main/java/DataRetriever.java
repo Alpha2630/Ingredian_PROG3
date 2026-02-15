@@ -812,7 +812,7 @@ public class DataRetriever {
         try (Connection connection = dbConnection.getConnection()) {
             String sql;
 
-            // Adapter la requête selon la périodicité
+
             switch (periodicity.toUpperCase()) {
                 case "DAY":
                     sql = """
