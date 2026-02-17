@@ -1,8 +1,5 @@
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.time.Instant;
 
@@ -894,6 +891,63 @@ public class DataRetriever {
 
         } catch (SQLException e) {
             throw new RuntimeException("Erreur calcul statistiques stock: " + e.getMessage(), e);
+        }
+    }
+    public void printStockStatistics(String periodicity, Instant startDate, Instant endDate) {
+        Map<Integer, Map<String, Double>> stats = getStockStatistics(periodicity, startDate, endDate);
+
+        DBConnection dbConnection = new DBConnection();
+
+        try (Connection connection = dbConnection.getConnection()) {
+
+            String nameSQL = "SELECT id, name FROM ingredient WHERE id IN (";
+            nameSQL += String.join(",", stats.keySet().stream().map(String::valueOf).collect(Collectors.joining(",")));
+            nameSQL += ") ORDER BY id";
+
+            PreparedStatement nameStmt = connection.prepareStatement(nameSQL);
+            ResultSet nameRs = nameStmt.executeQuery();
+
+            Map<Integer, String> ingredientNames = new HashMap<>();
+            while (nameRs.next()) {
+                ingredientNames.put(nameRs.getInt("id"), nameRs.getString("name"));
+            }
+
+
+            System.out.println("Statistiques de stock - Périodicité: " + periodicity);
+            System.out.println("Période: " + startDate + " à " + endDate);
+            System.out.println();
+
+            Set<String> allPeriods = new LinkedHashSet<>();
+            for (Map<String, Double> ingredientStats : stats.values()) {
+                allPeriods.addAll(ingredientStats.keySet());
+            }
+
+
+            System.out.printf("%-20s", "Ingrédient");
+            for (String period : allPeriods) {
+                System.out.printf("%-12s", period);
+            }
+            System.out.println();
+            System.out.println("-".repeat(20 + allPeriods.size() * 12));
+
+
+            for (Map.Entry<Integer, Map<String, Double>> entry : stats.entrySet()) {
+                String ingredientName = ingredientNames.getOrDefault(entry.getKey(), "ID: " + entry.getKey());
+                System.out.printf("%-20s", ingredientName);
+
+                for (String period : allPeriods) {
+                    Double value = entry.getValue().get(period);
+                    if (value != null) {
+                        System.out.printf("%-12.2f", value);
+                    } else {
+                        System.out.printf("%-12s", " - ");
+                    }
+                }
+                System.out.println();
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur affichage statistiques: " + e.getMessage(), e);
         }
     }
 }
