@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
-  title: API Gestion Restaurant
-  description: API pour gérer les commandes, plats, ingrédients et stocks
+  title: API Gestion des Ingrédients
+  description: API REST pour la gestion des ingrédients et du stock
   version: 1.0.0
 
 servers:
@@ -9,111 +9,25 @@ servers:
 
 paths:
 
-  /orders/{id}:
-    get:
-      summary: Récupérer une commande par ID
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        200:
-          description: Commande trouvée
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Order'
-        404:
-          description: Commande non trouvée
-
-  /orders:
-    post:
-      summary: Créer une commande
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Order'
-      responses:
-        201:
-          description: Commande créée
-        400:
-          description: Données invalides
-
-  /orders/{id}/status:
-    put:
-      summary: Modifier le statut d’une commande
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: string
-              enum: [CREATED, CONFIRMED, DELIVERED]
-      responses:
-        200:
-          description: Statut mis à jour
-
-  /orders/{id}/type:
-    put:
-      summary: Modifier le type d’une commande
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: string
-              enum: [ON_SITE, TAKE_AWAY]
-      responses:
-        200:
-          description: Type mis à jour
-
-  /dishes/{id}:
-    get:
-      summary: Récupérer un plat
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        200:
-          description: Plat trouvé
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Dish'
-
-  /dishes:
-    post:
-      summary: Créer ou modifier un plat
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Dish'
-      responses:
-        200:
-          description: Plat sauvegardé
-
   /ingredients:
+    get:
+      summary: Lister tous les ingrédients
+      responses:
+        200:
+          description: Liste des ingrédients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ingredient'
+        500:
+          description: Erreur serveur
+
     post:
       summary: Créer plusieurs ingrédients
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -122,11 +36,15 @@ paths:
                 $ref: '#/components/schemas/Ingredient'
       responses:
         201:
-          description: Ingrédients créés
+          description: Ingrédients créés avec succès
+        400:
+          description: Données invalides
+        500:
+          description: Erreur serveur
 
   /ingredients/{id}:
     get:
-      summary: Récupérer un ingrédient
+      summary: Récupérer un ingrédient par ID
       parameters:
         - name: id
           in: path
@@ -140,12 +58,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Ingredient'
+        404:
+          description: Ingrédient non trouvé
+        500:
+          description: Erreur serveur
 
-  /stock/{ingredientId}:
+  /ingredients/{id}/stock:
     get:
-      summary: Obtenir le stock à un instant donné
+      summary: Obtenir le stock d’un ingrédient à un instant donné
       parameters:
-        - name: ingredientId
+        - name: id
           in: path
           required: true
           schema:
@@ -159,126 +81,79 @@ paths:
       responses:
         200:
           description: Stock calculé
-
-  /dishes/{id}/cost:
-    get:
-      summary: Calculer le coût d’un plat
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        200:
-          description: Coût du plat
-
-  /dishes/{id}/margin:
-    get:
-      summary: Calculer la marge brute
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        200:
-          description: Marge brute
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockValue'
+        400:
+          description: Paramètres invalides
+        500:
+          description: Erreur serveur
 
   /stocks/statistics:
     get:
-      summary: Statistiques de stock
+      summary: Obtenir les statistiques de stock
       parameters:
         - name: periodicity
           in: query
+          required: true
           schema:
             type: string
             enum: [DAY, WEEK, MONTH]
         - name: startDate
           in: query
+          required: true
           schema:
             type: string
             format: date-time
         - name: endDate
           in: query
+          required: true
           schema:
             type: string
             format: date-time
       responses:
         200:
           description: Statistiques retournées
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: object
+                  additionalProperties:
+                    type: number
+        400:
+          description: Paramètres invalides
+        500:
+          description: Erreur serveur
 
 components:
 
   schemas:
 
-    Order:
-      type: object
-      properties:
-        id:
-          type: integer
-        reference:
-          type: string
-        creationDatetime:
-          type: string
-          format: date-time
-        orderType:
-          type: string
-        orderStatus:
-          type: string
-        dishOrderList:
-          type: array
-          items:
-            $ref: '#/components/schemas/DishOrder'
-
-    DishOrder:
-      type: object
-      properties:
-        id:
-          type: integer
-        quantity:
-          type: integer
-        dish:
-          $ref: '#/components/schemas/Dish'
-
-    Dish:
-      type: object
-      properties:
-        id:
-          type: integer
-        name:
-          type: string
-        price:
-          type: number
-        dishType:
-          type: string
-        dishIngredients:
-          type: array
-          items:
-            $ref: '#/components/schemas/DishIngredient'
-
-    DishIngredient:
-      type: object
-      properties:
-        ingredient:
-          $ref: '#/components/schemas/Ingredient'
-        quantity:
-          type: number
-        unit:
-          type: string
-
     Ingredient:
       type: object
+      required:
+        - name
+        - category
       properties:
         id:
           type: integer
+          example: 1
         name:
           type: string
+          example: Tomate
         price:
           type: number
+          format: double
+          example: 500.0
         category:
-          type: string
+          $ref: '#/components/schemas/Category'
+        stockMovements:
+          type: array
+          items:
+            $ref: '#/components/schemas/StockMovement'
 
     StockMovement:
       type: object
@@ -287,10 +162,44 @@ components:
           type: integer
         quantity:
           type: number
+          example: 10.5
         type:
-          type: string
+          $ref: '#/components/schemas/MovementType'
         unit:
-          type: string
+          $ref: '#/components/schemas/Unit'
         creationDatetime:
           type: string
           format: date-time
+
+    StockValue:
+      type: object
+      properties:
+        quantity:
+          type: number
+          example: 25.0
+        unit:
+          $ref: '#/components/schemas/Unit'
+
+    Category:
+      type: string
+      enum:
+        - VEGETABLE
+        - MEAT
+        - FISH
+        - DAIRY
+        - SPICE
+
+    MovementType:
+      type: string
+      enum:
+        - IN
+        - OUT
+
+    Unit:
+      type: string
+      enum:
+        - KG
+        - G
+        - L
+        - ML
+        - UNIT
