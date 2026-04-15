@@ -1,0 +1,296 @@
+openapi: 3.0.3
+info:
+  title: API Gestion Restaurant
+  description: API pour gérer les commandes, plats, ingrédients et stocks
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080/api
+
+paths:
+
+  /orders/{id}:
+    get:
+      summary: Récupérer une commande par ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Commande trouvée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        404:
+          description: Commande non trouvée
+
+  /orders:
+    post:
+      summary: Créer une commande
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Order'
+      responses:
+        201:
+          description: Commande créée
+        400:
+          description: Données invalides
+
+  /orders/{id}/status:
+    put:
+      summary: Modifier le statut d’une commande
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+              enum: [CREATED, CONFIRMED, DELIVERED]
+      responses:
+        200:
+          description: Statut mis à jour
+
+  /orders/{id}/type:
+    put:
+      summary: Modifier le type d’une commande
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+              enum: [ON_SITE, TAKE_AWAY]
+      responses:
+        200:
+          description: Type mis à jour
+
+  /dishes/{id}:
+    get:
+      summary: Récupérer un plat
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Plat trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dish'
+
+  /dishes:
+    post:
+      summary: Créer ou modifier un plat
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Dish'
+      responses:
+        200:
+          description: Plat sauvegardé
+
+  /ingredients:
+    post:
+      summary: Créer plusieurs ingrédients
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Ingredient'
+      responses:
+        201:
+          description: Ingrédients créés
+
+  /ingredients/{id}:
+    get:
+      summary: Récupérer un ingrédient
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Ingrédient trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ingredient'
+
+  /stock/{ingredientId}:
+    get:
+      summary: Obtenir le stock à un instant donné
+      parameters:
+        - name: ingredientId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: datetime
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+      responses:
+        200:
+          description: Stock calculé
+
+  /dishes/{id}/cost:
+    get:
+      summary: Calculer le coût d’un plat
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Coût du plat
+
+  /dishes/{id}/margin:
+    get:
+      summary: Calculer la marge brute
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Marge brute
+
+  /stocks/statistics:
+    get:
+      summary: Statistiques de stock
+      parameters:
+        - name: periodicity
+          in: query
+          schema:
+            type: string
+            enum: [DAY, WEEK, MONTH]
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        200:
+          description: Statistiques retournées
+
+components:
+
+  schemas:
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        reference:
+          type: string
+        creationDatetime:
+          type: string
+          format: date-time
+        orderType:
+          type: string
+        orderStatus:
+          type: string
+        dishOrderList:
+          type: array
+          items:
+            $ref: '#/components/schemas/DishOrder'
+
+    DishOrder:
+      type: object
+      properties:
+        id:
+          type: integer
+        quantity:
+          type: integer
+        dish:
+          $ref: '#/components/schemas/Dish'
+
+    Dish:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        price:
+          type: number
+        dishType:
+          type: string
+        dishIngredients:
+          type: array
+          items:
+            $ref: '#/components/schemas/DishIngredient'
+
+    DishIngredient:
+      type: object
+      properties:
+        ingredient:
+          $ref: '#/components/schemas/Ingredient'
+        quantity:
+          type: number
+        unit:
+          type: string
+
+    Ingredient:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        price:
+          type: number
+        category:
+          type: string
+
+    StockMovement:
+      type: object
+      properties:
+        id:
+          type: integer
+        quantity:
+          type: number
+        type:
+          type: string
+        unit:
+          type: string
+        creationDatetime:
+          type: string
+          format: date-time
